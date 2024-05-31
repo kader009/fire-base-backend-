@@ -8,7 +8,6 @@ const port = 5000;
 // Load environment variables from .env file
 dotenv.config();
 
-
 // middleware
 app.use(cors());
 app.use(express.json());
@@ -28,7 +27,9 @@ async function run() {
     await client.connect();
 
     const ProductDb = client.db('productDB');
+    const userDb = client.db('userDB');
     const shoeCollection = ProductDb.collection('shoeCollection');
+    const userCollection = userDb.collection('userCollection');
 
     app.post('/shoes', async (req, res) => {
       const shoesData = req.body;
@@ -66,6 +67,20 @@ async function run() {
     app.delete('/shoes/:id', async (req, res) => {
       const id = req.params.id;
       const result = await shoeCollection.deleteOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
+
+    // user routes
+
+    app.post('/user', async (req, res) => {
+      const user = req.body;
+      const IsExit = await userCollection.findOne({email: user?.email})
+
+      if(IsExit?._id){
+      return res.send('login success')
+      }
+
+      const result = await userCollection.insertOne(user);
       res.send(result);
     });
 
