@@ -2,6 +2,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express');
 const cors = require('cors');
 const app = express();
+const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
 const port = 5000;
 
@@ -11,6 +12,31 @@ dotenv.config();
 // middleware
 app.use(cors());
 app.use(express.json());
+
+// jwt create function
+
+function createToken(user) {
+  const token = jwt.sign(
+    {
+      email: user?.email,
+    },
+    'secret',
+    { expiresIn: '1h' }
+  );
+
+  return token;
+}
+
+// jwt verify function
+function verifyToken(req, res, next) {
+  const token = req.headers.authorization.split('')[1];
+  const verify = jwt.verify(token, 'secret');
+  if (!verify?.email) {
+    res.send('You Are Not Authorized!');
+  }
+  req.user = verify.email;
+  next();
+}
 
 const uri = `mongodb+srv://${process.env.MONGODB_NAME}:${process.env.MONGODB_PASSWORD}@cluster0.mxhsli3.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -43,13 +69,13 @@ async function run() {
       res.send(shoes);
     });
 
-    app.get('/shoes/:id', async (req, res) => {
+    app.get('/shoes/:id', verifyToken, async (req, res) => {
       const id = req.params.id;
       const shoes = await shoeCollection.findOne({ _id: new ObjectId(id) });
       res.send(shoes);
     });
 
-    app.patch('/shoes/:id', async (req, res) => {
+    app.patch('/shoes/:id', verifyToken, async (req, res) => {
       const id = req.params.id;
       const updateData = req.body;
 
@@ -64,7 +90,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete('/shoes/:id', async (req, res) => {
+    app.delete('/shoes/:id', verifyToken, async (req, res) => {
       const id = req.params.id;
       const result = await shoeCollection.deleteOne({ _id: new ObjectId(id) });
       res.send(result);
@@ -74,14 +100,16 @@ async function run() {
 
     app.post('/user', async (req, res) => {
       const user = req.body;
+      const token = createToken(user);
+      console.log(token);
       const IsExit = await userCollection.findOne({ email: user?.email });
 
       if (IsExit?._id) {
-        return res.send('login success');
+        return res.send({ status: 'success', message: 'login success', token });
       }
 
-      const result = await userCollection.insertOne(user);
-      res.send(result);
+      await userCollection.insertOne(user);
+      res.send(token);
     });
 
     app.get('/user/get/:id', async (req, res) => {
@@ -117,10 +145,10 @@ async function run() {
 }
 run().catch(console.dir);
 
-app.get('/', (req, res) => {
-  res.send('Shoes Server!');
-});
+    app.get('/', (req, res) => {
+      res.send('Shoes Server!');
+    });
 
-app.listen(port, () => {
-  console.log(`Shoes Server app listening on port ${port}`);
-});
+    app.listen(port, () => {
+      console.log(`Shoes Server app listening on port ${port}`);
+    });
