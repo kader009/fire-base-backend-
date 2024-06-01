@@ -74,13 +74,37 @@ async function run() {
 
     app.post('/user', async (req, res) => {
       const user = req.body;
-      const IsExit = await userCollection.findOne({email: user?.email})
+      const IsExit = await userCollection.findOne({ email: user?.email });
 
-      if(IsExit?._id){
-      return res.send('login success')
+      if (IsExit?._id) {
+        return res.send('login success');
       }
 
       const result = await userCollection.insertOne(user);
+      res.send(result);
+    });
+
+    app.get('/user/get/:id', async (req, res) => {
+      const id = req.params.id;
+      console.log(id);
+      const result = await userCollection.findOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
+
+    app.get('/user/:email', async (req, res) => {
+      const email = req.params.email;
+      const result = await userCollection.findOne({ email });
+      res.send(result);
+    });
+
+    app.patch('/user/:email', async (req, res) => {
+      const email = req.params.email;
+      const updateData = req.body;
+      const result = await userCollection.updateOne(
+        { email },
+        { $set: updateData },
+        { upsert: true }
+      );
       res.send(result);
     });
 
