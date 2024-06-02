@@ -23,16 +23,16 @@ function createToken(user) {
     'secret',
     { expiresIn: '1h' }
   );
-
   return token;
 }
 
 // jwt verify function
 function verifyToken(req, res, next) {
-  const token = req.headers.authorization.split('')[1];
+  const token = req.headers.authorization.split(' ')[1];
+  console.log(token);
   const verify = jwt.verify(token, 'secret');
   if (!verify?.email) {
-    res.send('You Are Not Authorized!');
+    return res.send('You are not authorized');
   }
   req.user = verify.email;
   next();
@@ -57,7 +57,7 @@ async function run() {
     const shoeCollection = ProductDb.collection('shoeCollection');
     const userCollection = userDb.collection('userCollection');
 
-    app.post('/shoes', async (req, res) => {
+    app.post('/shoes', verifyToken, async (req, res) => {
       const shoesData = req.body;
       const result = await shoeCollection.insertOne(shoesData);
       console.log(result);
@@ -98,10 +98,11 @@ async function run() {
 
     // user routes
 
-    app.post('/user', async (req, res) => {
+    app.post('/user', verifyToken, async (req, res) => {
       const user = req.body;
       const token = createToken(user);
-      console.log(token);
+      // console.log(token);
+
       const IsExit = await userCollection.findOne({ email: user?.email });
 
       if (IsExit?._id) {
@@ -109,7 +110,7 @@ async function run() {
       }
 
       await userCollection.insertOne(user);
-      res.send(token);
+      res.send({ token });
     });
 
     app.get('/user/get/:id', async (req, res) => {
@@ -145,10 +146,10 @@ async function run() {
 }
 run().catch(console.dir);
 
-    app.get('/', (req, res) => {
-      res.send('Shoes Server!');
-    });
+app.get('/', (req, res) => {
+  res.send('Shoes Server!');
+});
 
-    app.listen(port, () => {
-      console.log(`Shoes Server app listening on port ${port}`);
-    });
+app.listen(port, () => {
+  console.log(`Shoes Server app listening on port ${port}`);
+});
