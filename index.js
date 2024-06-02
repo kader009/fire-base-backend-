@@ -30,11 +30,11 @@ function createToken(user) {
 function verifyToken(req, res, next) {
   const token = req.headers.authorization.split(' ')[1];
   console.log(token);
-  const verify = jwt.verify(token, 'secret');
-  if (!verify?.email) {
-    return res.send('You are not authorized');
-  }
-  req.user = verify.email;
+  // const verify = jwt.verify(token, 'secret');
+  // if (!verify?.email) {
+  //   return res.send('You are not authorized');
+  // }
+  // req.user = verify.email;
   next();
 }
 
@@ -59,7 +59,7 @@ async function run() {
 
     app.post('/shoes', verifyToken, async (req, res) => {
       const shoesData = req.body;
-      const result = await shoeCollection.insertOne(shoesData);
+      const result = await shoeCollection.insertOne(shoesData); 
       console.log(result);
       res.send(result);
     });
@@ -69,13 +69,13 @@ async function run() {
       res.send(shoes);
     });
 
-    app.get('/shoes/:id', verifyToken, async (req, res) => {
+    app.get('/shoes/:id', async (req, res) => {
       const id = req.params.id;
       const shoes = await shoeCollection.findOne({ _id: new ObjectId(id) });
       res.send(shoes);
     });
 
-    app.patch('/shoes/:id', verifyToken, async (req, res) => {
+    app.patch('/shoes/:id', async (req, res) => {
       const id = req.params.id;
       const updateData = req.body;
 
@@ -90,7 +90,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete('/shoes/:id', verifyToken, async (req, res) => {
+    app.delete('/shoes/:id', async (req, res) => {
       const id = req.params.id;
       const result = await shoeCollection.deleteOne({ _id: new ObjectId(id) });
       res.send(result);
