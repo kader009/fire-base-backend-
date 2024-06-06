@@ -1,44 +1,43 @@
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express');
 const cors = require('cors');
-const app = express();
 const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
+const app = express();
 const port = 5000;
 
 // Load environment variables from .env file
 dotenv.config();
 
-// middleware
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-// jwt create function
-
+// JWT Create Function
 function createToken(user) {
-  const token = jwt.sign(
-    {
-      email: user?.email,
-    },
-    'secret',
-    { expiresIn: '1h' }
-  );
+  const token = jwt.sign({ email: user?.email }, process.env.JWT_SECRET, {
+    expiresIn: '7d',
+  });
   return token;
 }
 
-// jwt verify function
+// JWT Verify Function
 function verifyToken(req, res, next) {
   const token = req.headers.authorization.split(' ')[1];
-  console.log(token);
-  // const verify = jwt.verify(token, 'secret');
-  // if (!verify?.email) {
-  //   return res.send('You are not authorized');
-  // }
-  // req.user = verify.email;
-  next();
-}
+  // console.log(token);
+  const verify = jwt.verify(token, process.env.JWT_SECRET)
+  console.log(verify);
+  if(!verify?.email){
+    return res.send('you are not authorized')
+  }
+  req.user = verify.email;
 
-const uri = `mongodb+srv://${process.env.MONGODB_NAME}:${process.env.MONGODB_PASSWORD}@cluster0.mxhsli3.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+    next();
+  }
+//   );
+// }
+
+const uri = process.env.MONGODB_LINK;
 
 const client = new MongoClient(uri, {
   serverApi: {
@@ -59,7 +58,7 @@ async function run() {
 
     app.post('/shoes', verifyToken, async (req, res) => {
       const shoesData = req.body;
-      const result = await shoeCollection.insertOne(shoesData); 
+      const result = await shoeCollection.insertOne(shoesData);
       console.log(result);
       res.send(result);
     });
@@ -75,11 +74,9 @@ async function run() {
       res.send(shoes);
     });
 
-    app.patch('/shoes/:id', async (req, res) => {
+    app.patch('/shoes/:id', verifyToken, async (req, res) => {
       const id = req.params.id;
       const updateData = req.body;
-
-      // Remove _id from updateData if it exists
       delete updateData._id;
 
       const result = await shoeCollection.updateOne(
@@ -90,27 +87,26 @@ async function run() {
       res.send(result);
     });
 
-    app.delete('/shoes/:id', async (req, res) => {
+    app.delete('/shoes/:id', verifyToken, async (req, res) => {
       const id = req.params.id;
       const result = await shoeCollection.deleteOne({ _id: new ObjectId(id) });
       res.send(result);
     });
 
-    // user routes
-
-    app.post('/user', verifyToken, async (req, res) => {
+    // User routes
+    app.post('/user', async (req, res) => {
       const user = req.body;
       const token = createToken(user);
-      // console.log(token);
+      console.log(token);
 
-      const IsExit = await userCollection.findOne({ email: user?.email });
+      const IsExit = await userCollection.findOne({ email: user.email });
 
       if (IsExit?._id) {
         return res.send({ status: 'success', message: 'login success', token });
       }
 
       await userCollection.insertOne(user);
-      res.send({ token });
+      return res.send({ token });
     });
 
     app.get('/user/get/:id', async (req, res) => {
@@ -136,6 +132,29 @@ async function run() {
       );
       res.send(result);
     });
+
+    // Refresh Token Endpoint
+    // app.post('/refresh-token', (req, res) => {
+    //   const token = req.body.token;
+    //   if (!token) {
+    //     return res.status(401).send('Authorization token missing');
+    //   }
+
+    //   jwt.verify(
+    //     token,
+    //     'secret',
+    //     { ignoreExpiration: true },
+    //     (err, decoded) => {
+    //       if (err) {
+    //         return res.status(401).send('Invalid token');
+    //       }
+
+    //       const user = { email: decoded.email };
+    //       const newToken = createToken(user);
+    //       res.send({ token: newToken });
+    //     }
+    //   );
+    // });
 
     console.log(
       'Pinged your deployment. You successfully connected to MongoDB!'
